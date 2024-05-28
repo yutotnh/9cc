@@ -1,0 +1,4 @@
+# [低レイヤを知りたい人のためのCコンパイラ作成入門](https://www.sigbus.info/compilerbook)に記載されているコードのフォーマットに寄せる
+BasedOnStyle: LLVM
+
+AllowShortFunctionsOnASingleLine: None
