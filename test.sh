@@ -26,5 +26,13 @@ assert 4 '(3+5)/2'
 assert 10 '-10+20'
 assert 1 '-(3+5)+9'
 assert 8 '-3*+5+23'
+assert 1 '23==23'
+assert 0 '21==2'
+assert 2 '1+(5<=123)'
+assert 1 '24<=123'
+assert 1 '3<4'
+assert 0 '2>=123*3'
+assert 1 '7>1'
+assert 0 '1!=1'
 
 echo OK
