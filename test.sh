@@ -39,5 +39,6 @@ assert 1 'q=5<10;'
 assert 16 'z=(2*(5+3));'
 assert 24 '6;
 y=3*8;'
+assert 84 'abc=6; e=2*4; zzz=abc+e; zzz=zzz*abc;'
 
 echo OK
