@@ -40,5 +40,8 @@ assert 16 'z=(2*(5+3));'
 assert 24 '6;
 y=3*8;'
 assert 84 'abc=6; e=2*4; zzz=abc+e; zzz=zzz*abc;'
+assert 0 'return 0;'
+assert 52 'return 52; return 12;'
+assert 15 'a=3; b=5; return a*b;'
 
 echo OK
