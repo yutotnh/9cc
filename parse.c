@@ -18,8 +18,16 @@ Node *new_node_num(int val) {
   return node;
 }
 
+Token *consume_ident() {
+  if (token->kind != TK_IDENT)
+    return NULL;
+  Token *tok = token;
+  token = token->next;
+  return tok;
+}
+
 bool consume(char *op) {
-  if (token->kind != TK_RESERVED || strlen(op) != token->len ||
+  if (token->kind != TK_RESERVED || strlen(op) != (size_t)token->len ||
       memcmp(token->str, op, token->len))
     return false;
   token = token->next;
@@ -27,9 +35,9 @@ bool consume(char *op) {
 }
 
 void expect(char *op) {
-  if (token->kind != TK_RESERVED || strlen(op) != token->len ||
+  if (token->kind != TK_RESERVED || strlen(op) != (size_t)token->len ||
       memcmp(token->str, op, token->len))
-    error_at(token->str, "'%c'ではありません", op);
+    error_at(token->str, "'%s'ではありません", op);
   token = token->next;
 }
 
@@ -45,24 +53,40 @@ bool at_eof() {
   return token->kind == TK_EOF;
 }
 
-Node *primary() {
-  // 次のトークンが"("なら、"(" expr ")"のはず
-  if (consume("(")) {
-    Node *node = expr();
-    expect(")");
-    return node;
-  }
-
-  // そうでなければ数値のはず
-  return new_node_num(expect_number());
+// EBNF
+// program    = stmt*
+void program() {
+  int i = 0;
+  while (!at_eof())
+    code[i++] = stmt();
+  code[i] = NULL;
 }
 
-Node *expr() {
-  Node *node = equality();
-
+// EBNF
+// stmt       = expr ";"
+Node *stmt() {
+  Node *node = expr();
+  expect(";");
   return node;
 }
 
+// EBNF
+// expr       = assign
+Node *expr() {
+  return assign();
+}
+
+// ENBF
+// assign     = equality ("=" assign)?
+Node *assign() {
+  Node *node = equality();
+  if (consume("="))
+    node = new_node(ND_ASSIGN, node, assign());
+  return node;
+}
+
+// EBNF
+// equality   = relational ("==" relational | "!=" relational)*
 Node *equality() {
   Node *node = relational();
 
@@ -76,6 +100,8 @@ Node *equality() {
   }
 }
 
+// EBNF
+// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 Node *relational() {
   Node *node = add();
 
@@ -95,6 +121,8 @@ Node *relational() {
   }
 }
 
+// ENBF
+// add        = mul ("+" mul | "-" mul)*
 Node *add() {
   Node *node = mul();
 
@@ -108,6 +136,8 @@ Node *add() {
   }
 }
 
+// EBNF
+// mul        = unary ("*" unary | "/" unary)*
 Node *mul() {
   Node *node = unary();
 
@@ -121,12 +151,37 @@ Node *mul() {
   }
 }
 
+// EBNF
+// unary      = ("+" | "-")? primary
 Node *unary() {
   if (consume("+"))
     return primary();
   if (consume("-"))
     return new_node(ND_SUB, new_node_num(0), primary());
   return primary();
+}
+
+// EBNF
+// primary    = num | ident | "(" expr ")"
+Node *primary() {
+  // 次のトークンが"("なら、"(" expr ")"のはず
+  if (consume("(")) {
+    Node *node = expr();
+    expect(")");
+    return node;
+  }
+
+  // 次のトークンが識別子なら、変数
+  Token *tok = consume_ident();
+  if (tok) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LVAR;
+    node->offset = (tok->str[0] - 'a' + 1) * 8;
+    return node;
+  }
+
+  // そうでなければ数値のはず
+  return new_node_num(expect_number());
 }
 
 Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
@@ -138,7 +193,8 @@ Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   return tok;
 }
 
-Token *tokenize(char *p) {
+void tokenize() {
+  char *p = user_input;
   Token head;
   head.next = NULL;
   Token *cur = &head;
@@ -147,6 +203,12 @@ Token *tokenize(char *p) {
     // 空白文字をスキップ
     if (isspace(*p)) {
       p++;
+      continue;
+    }
+
+    if ('a' <= *p && *p <= 'z') {
+      cur = new_token(TK_IDENT, cur, p++, 1);
+      cur->len = 1;
       continue;
     }
 
@@ -166,6 +228,8 @@ Token *tokenize(char *p) {
     case ')':
     case '<':
     case '>':
+    case '=':
+    case ';':
       cur = new_token(TK_RESERVED, cur, p++, 1);
       continue;
       break;
@@ -186,5 +250,6 @@ Token *tokenize(char *p) {
   }
 
   new_token(TK_EOF, cur, p, 0);
-  return head.next;
+
+  token = head.next;
 }
